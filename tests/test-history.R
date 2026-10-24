@@ -1,0 +1,57 @@
+Sys.setenv(WORTHWHILE_MODE='local')
+Sys.setenv(PORTFOLIO_STATE_FILE='')
+library(shiny);source('app.R')
+s<-demo_state(as.Date('2026-10-23'));original<-s$tasks$original_estimate[11]
+s<-log_work(s,'t11',2.5,as.Date('2026-10-23'),remaining=5)
+stopifnot(actual_hours(s,'t11')==2.5,!s$tasks$done[11],s$tasks$remaining[11]==5,s$tasks$original_estimate[11]==original)
+s<-finish_with_actual(s,'t11',7.25,as.Date('2026-10-24'))
+stopifnot(actual_hours(s,'t11')==7.25,nrow(s$logs)==2,s$tasks$time_complete[11],validate_state(s))
+s<-finish_with_actual(s,'t11',7.25,as.Date('2026-10-24'));stopifnot(nrow(s$logs)==2)
+r<-task_report(s);stopifnot(r$Ratio[r$id=='t11']==7.25/6,analytics_summary(r)$verified==1)
+# Estimates can be exceeded while a task remains open.
+s<-log_work(s,'t15',1,as.Date('2026-10-24'),remaining=.5);stopifnot(!s$tasks$done[15],actual_hours(s,'t15')==1,s$tasks$original_estimate[15]==.25)
+s<-delete_task(s,'t9');stopifnot(!'t9'%in%s$tasks$id,nzchar(s$tasks$blocked_reason[s$tasks$id=='t17']),rank_tasks(s)$blocked[match('t17',rank_tasks(s)$id)],validate_state(s))
+s<-delete_job(s,'j3');stopifnot(!'j3'%in%s$jobs$id,'t11'%in%s$archive$tasks$id,actual_hours(s,'t11')==7.25,validate_state(s))
+r<-task_report(s);stopifnot(r$Deleted[r$id=='t11'],analytics_summary(r)$verified==1,nrow(task_report(s,FALSE))==nrow(s$tasks))
+stopifnot(!next_id('t',record_ids(s,'tasks'))%in%record_ids(s,'tasks'))
+for(jid in s$jobs$id)s<-delete_job(s,jid)
+stopifnot(nrow(s$jobs)==0,nrow(s$tasks)==0,validate_state(s),nrow(task_report(s))==17)
+s<-purge_history(s,'jobs','j3');stopifnot(!'t11'%in%all_records(s,'tasks')$id,actual_hours(s,'t11')==0,validate_state(s))
+# Current and old backup files round-trip; old unknown actuals are not guessed.
+f<-tempfile(fileext='.json');save_state(s,f);loaded<-read_backup(f);stopifnot(validate_state(loaded),nrow(loaded$archive$tasks)==nrow(s$archive$tasks));unlink(f)
+old<-demo_state(as.Date('2026-10-23'));old$schema<-1L;old$archive<-NULL;old$tasks<-old$tasks[,!names(old$tasks)%in%c('original_estimate','collaborators','created','time_complete','blocked_reason')]
+f<-tempfile(fileext='.json');jsonlite::write_json(old,f,auto_unbox=TRUE,dataframe='columns');up<-read_backup(f);stopifnot(up$schema==4L,all(!up$tasks$time_complete),identical(up$tasks$total,up$tasks$original_estimate));unlink(f)
+# Analytics calibration uses only confirmed completions, and requires evidence.
+s<-demo_state(as.Date('2026-10-23'));for(id in c('t1','t2','t3'))s<-finish_with_actual(s,id,s$tasks$total[match(id,s$tasks$id)]*2,as.Date('2026-10-23'))
+r<-task_report(s);stopifnot(analytics_summary(r)$ratio==2,any(grepl('2×|2 and',behaviour_recommendations(r))),sum(job_report(r)$Tasks)==17)
+stopifnot(nzchar(paste(behaviour_recommendations(task_report(demo_state())),collapse='')))
+# Review, exact editing, finishing, deletion and calendar views through real modules.
+shiny::testServer(server,{
+  session$setInputs(week='2026-10-19',buffer=15,cap=8,protect=TRUE,`insights-deleted`=TRUE)
+  session$setInputs(`tasks-review`=1);tid<-task_manager$review_id();baseline<-state()$tasks$original_estimate[match(tid,state()$tasks$id)]
+  session$setInputs(`tasks-r_nudges`=4,`tasks-r_remaining`=30,`tasks-r_consequence`=4,`tasks-r_personal`=5,`tasks-r_due`='2026-11-05',`tasks-r_hard`=FALSE,`tasks-r_extension`=2,`tasks-r_people`='Ada, Ben',`tasks-r_blocked`='',`tasks-review_save`=1)
+  stopifnot(state()$tasks$nudges[match(tid,state()$tasks$id)]==4,state()$tasks$collaborators[match(tid,state()$tasks$id)]=='Ada, Ben',state()$tasks$original_estimate[match(tid,state()$tasks$id)]==baseline)
+  session$setInputs(`tasks-selected`=tid,`tasks-hours`=3,`tasks-after`=27,`tasks-log_date`='2026-10-23',`tasks-log`=1)
+  stopifnot(actual_hours(state(),tid)==3,!state()$tasks$done[match(tid,state()$tasks$id)])
+  session$setInputs(`tasks-finish`=tid,`tasks-finish_total`=5,`tasks-finish_confirm`=1)
+  stopifnot(actual_hours(state(),tid)==5,state()$tasks$time_complete[match(tid,state()$tasks$id)])
+  session$setInputs(`capacity-view`='Month');stopifnot(grepl('month-calendar',output[['capacity-week_calendar']]$html,fixed=TRUE))
+  session$setInputs(`capacity-view`='Day',`capacity-day`='5');stopifnot(grepl('calendar-deadlines',output[['capacity-week_calendar']]$html,fixed=TRUE))
+  stopifnot(grepl('Median completed task',output[['insights-metrics']]$html,fixed=TRUE))
+  session$setInputs(`tasks-selected`=tid,`tasks-delete`=1);session$setInputs(`tasks-delete_confirm`=1)
+  stopifnot(!tid%in%state()$tasks$id,tid%in%state()$archive$tasks$id)
+  session$setInputs(`jobs-selected`='j2',`jobs-delete`=1);session$setInputs(`jobs-delete_confirm`=1)
+  stopifnot(!'j2'%in%state()$jobs$id,validate_state(state()))
+  session$setInputs(undo=1);stopifnot('j2'%in%state()$jobs$id)
+})
+# An actual saved file is loaded on a new session and starts the task review.
+f<-tempfile(fileext='.json');s<-demo_state();s$settings$example_mode<-FALSE;s$settings$setup_complete<-TRUE;save_state(s,f)
+Sys.unsetenv('WORTHWHILE_STATE_FILE');Sys.setenv(PORTFOLIO_STATE_FILE=f)
+shiny::testServer(server,{
+  session$setInputs(week=as.character(Sys.Date()),buffer=15,cap=8,protect=TRUE)
+  stopifnot(nzchar(task_manager$review_id()),saved_exists)
+  session$setInputs(`tasks-selected`='t1',`tasks-nudge`=1)
+  stopifnot(read_backup(f)$tasks$nudges[1]==1)
+})
+unlink(f);Sys.setenv(PORTFOLIO_STATE_FILE='')
+cat('PASS: precise time accounting, estimate preservation, edit/review flows, removed history, zero-job state, purge, schema migration, analytics, autosave and startup review.\n')

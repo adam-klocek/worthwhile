@@ -1,0 +1,12 @@
+.git
+.github
+.Renviron
+.Renviron.example
+.env
+data
+preview
+tests
+supabase
+tools
+.Rproj.user
+rsconnect

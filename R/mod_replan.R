@@ -1,0 +1,30 @@
+replanUI <- function(id) {
+ ns<-NS(id)
+ tagList(tags$h2('When the day changes, change the plan.'),tags$p(class='lead','Preview one-off changes before applying them. Locked work is never silently moved.'),
+  fluidRow(column(5,section('What changed?',dateInput(ns('date'),'Date',Sys.Date()),selectInput(ns('kind'),'Availability change',c('No availability change'='None','Use only this work window today'='Available','Cannot work in this period'='Unavailable','Unexpected fixed meeting'='Meeting')),textInput(ns('title'),'Description','A change to the day'),fluidRow(column(6,selectInput(ns('start'),'From',c(time_choices(),'24:00'=24),9)),column(6,selectInput(ns('end'),'Until',c(time_choices(),'24:00'=24),17))),conditionalPanel("input.kind == 'Meeting'",ns=ns,selectInput(ns('job'),'Work role',NULL)),
+   selectInput(ns('task'),'Task taking longer? (optional)',NULL),numericInput(ns('remaining'),'New remaining effort (h; optional)',NA,min=.25,step=.25),
+   accordion('Keep a manual work decision',checkboxInput(ns('lock'),'Add / replace a locked work block',FALSE),selectInput(ns('replace_lock'),'Existing locked block to replace',NULL),selectInput(ns('lock_task'),'Task',NULL),dateInput(ns('lock_date'),'Work date',Sys.Date()),fluidRow(column(6,selectInput(ns('lock_start'),'Start',time_choices(),9)),column(6,selectInput(ns('lock_end'),'End',c(time_choices(),'24:00'=24),11)))),
+   accordion('Remove a dated adjustment',selectInput(ns('remove_exception'),'Exception to remove',NULL),selectInput(ns('remove_lock'),'Locked block to remove',NULL)),
+   actionButton(ns('preview'),'Preview revised plan',class='btn-primary'))),column(7,section('Before you apply',uiOutput(ns('preview_summary')),tableOutput(ns('changes')),actionButton(ns('apply'),'Apply this preview',class='btn-primary'),tags$p(class='hint','Apply uses the displayed preview; preview again after form edits. A preview becomes stale if you edit the real plan. Resolve lock conflicts before applying. Existing actual-time records and completed work remain intact.')))))
+}
+replanServer <- function(id,state,commit,controls,planning)moduleServer(id,function(input,output,session){
+ pv<-reactiveVal(NULL);error<-reactiveVal('')
+ context<-function()list(week=controls$anchor(),lens=controls$strategy(),buffer=controls$buffer(),cap=controls$cap(),protect=controls$protect(),seed=controls$seed(),today=controls$today())
+ observe({s<-state();updateSelectInput(session,'job',choices=choices_id(s$jobs,'name'));updateSelectInput(session,'task',choices=choices_id(active_tasks(s),blank=TRUE));updateSelectInput(session,'lock_task',choices=choices_id(active_tasks(s)));l<-s$locks;e<-s$exceptions;lc<-if(nrow(l))setNames(l$id,paste(l$date,l$task_id,fmt_hour(l$start),'–',fmt_hour(l$end)))else character();ec<-if(nrow(e))setNames(e$id,paste(e$date,e$title,fmt_hour(e$start)))else character();updateSelectInput(session,'replace_lock',choices=c('Create a new block'='',lc));updateSelectInput(session,'remove_lock',choices=c('None'='',lc));updateSelectInput(session,'remove_exception',choices=c('None'='',ec))})
+ observeEvent(input$replace_lock,{if(!nzchar(input$replace_lock))return();l<-state()$locks;i<-match(input$replace_lock,l$id);req(!is.na(i));updateSelectInput(session,'lock_task',selected=l$task_id[i]);updateDateInput(session,'lock_date',value=l$date[i]);updateSelectInput(session,'lock_start',selected=l$start[i]);updateSelectInput(session,'lock_end',selected=l$end[i])})
+ observeEvent(input$preview,{
+  tryCatch({source<-state();s<-source
+   if(nzchar(input$remove_exception %||% ''))s$exceptions<-s$exceptions[s$exceptions$id!=input$remove_exception,,drop=FALSE]
+   if(nzchar(input$remove_lock %||% ''))s$locks<-s$locks[s$locks$id!=input$remove_lock,,drop=FALSE]
+   if(!is.null(input$kind)&&input$kind!='None')s<-add_exception(s,input$date,num(input$start),num(input$end),input$kind,input$title %||% 'Dated change',if(input$kind=='Meeting')input$job else '')
+   if(nzchar(input$task %||% '')&&!is.null(input$remaining)&&!is.na(input$remaining)){i<-match(input$task,s$tasks$id);s$tasks$remaining[i]<-input$remaining;s$tasks$total[i]<-max(s$tasks$total[i],input$remaining)}
+   if(isTRUE(input$lock)){old<-input$replace_lock %||% '';s$locks<-s$locks[s$locks$id!=old,,drop=FALSE];s$locks<-rbind(s$locks,data.frame(id=if(nzchar(old))old else next_id('m',s$locks$id),task_id=input$lock_task,date=as.character(input$lock_date),start=num(input$lock_start),end=num(input$lock_end),stringsAsFactors=FALSE))}
+   validate_state(s);after<-plan_work(s,controls$strategy(),controls$anchor(),controls$protect(),controls$buffer(),controls$cap(),controls$seed(),controls$today());pv(list(source=source,state=s,before=planning(),after=after,context=context()));error('')
+  },error=function(e){pv(NULL);error(conditionMessage(e))})
+ })
+ output$preview_summary<-renderUI({if(nzchar(error()))return(tags$div(class='notice warning',role='alert',error()));p<-pv();if(is.null(p))return(tags$p(class='empty-hint','Make a small change and preview which tasks still fit.'))
+  tagList(tags$p(paste(sum(p$before$plan$hours),'h planned before →',sum(p$after$plan$hours),'h proposed.')),if(length(p$after$conflicts))tags$div(class='notice warning',tags$strong('Locked decisions need attention'),tags$ul(lapply(p$after$conflicts,tags$li))),tags$p(class='hint','A negative change below identifies work to postpone or renegotiate; no task is deleted.'))})
+ output$changes<-renderTable({p<-pv();req(p);plan_comparison(p$state,p$before,p$after)},digits=2,striped=TRUE)
+ observeEvent(input$apply,{tryCatch({p<-pv();if(is.null(p))stop('Preview a change first.');if(!identical(state(),p$source)||!identical(context(),p$context))stop('Your plan or planning context changed. Preview again before applying.');if(length(p$after$conflicts))stop('Resolve the locked-block conflicts before applying.');commit(p$state);pv(NULL);error('');showNotification('Replanned with your fixed commitments and manual locks preserved.')},error=function(e)error(conditionMessage(e)))})
+ list(preview=pv,error=error)
+})

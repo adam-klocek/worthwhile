@@ -1,0 +1,36 @@
+/* Generated from R/design.R. Run Rscript tools/build-theme.R to update. */
+:root {
+  --ink: #292D3E;
+  --iris: #777AB5;
+  --iris-text: #56598F;
+  --lavender: #B7B8E5;
+  --clay: #D6AFA4;
+  --paper: #F4F3F0;
+  --surface: #FFFFFF;
+  --muted: #626575;
+  --line: #DDDDE5;
+  --control-line: #898B9B;
+  --soft: #ECECF5;
+  --success: #366A5E;
+  --success-bg: #EAF2EE;
+  --warning: #855A25;
+  --warning-bg: #F8F0E4;
+  --error: #A13C4B;
+  --error-bg: #F8E9EC;
+  --info: #435F86;
+  --info-bg: #EAF0F8;
+  --shadow: 0 4px 20px #292D3E06;
+  --shadow-popover: 0 12px 40px #292D3E18;
+  --radius: 18px;
+  --radius-control: 10px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: Lora, Georgia, "Times New Roman", serif;
+}

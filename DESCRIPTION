@@ -1,0 +1,8 @@
+Package: Worthwhile
+Title: Worthwhile Personal Time and Work Decision Support
+Version: 0.6.0
+Description: Private cloud and local workload planning with resumable tasks, independent work sessions, dated replanning previews, trade-off scenarios, explainable priorities, modular work roles, goals, and historical reflection. Run app.R with shiny::runApp.
+Depends: R (>= 4.1.0)
+Authors@R: person("Adam", "Klocek", role = c("aut", "cre"))
+Imports: shiny (>= 1.8.0), jsonlite, httr2
+Encoding: UTF-8

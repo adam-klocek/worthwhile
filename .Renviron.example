@@ -1,0 +1,7 @@
+# Copy to .Renviron for local testing. Never commit .Renviron.
+# In hosted environments set these through the host's secret/variable settings.
+WORTHWHILE_MODE=supabase
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
+WORTHWHILE_ALLOW_SIGNUP=true
+# Personal offline mode instead: WORTHWHILE_MODE=local

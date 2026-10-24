@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "Please cite Worthwhile and acknowledge the author and funding statement in NOTICE.md."
+title: "Worthwhile: Make better decisions about what deserves your time"
+type: software
+authors:
+  - family-names: Klocek
+    given-names: Adam
+version: 0.6.0
+date-released: 2026-10-23

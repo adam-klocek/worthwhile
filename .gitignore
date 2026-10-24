@@ -1,0 +1,26 @@
+# User data and credentials: never upload these.
+data/
+.Renviron
+.Renviron.*
+!.Renviron.example
+.env
+.env.*
+!.env.example
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+rsconnect/
+.secrets/
+*.pem
+*.key
+# Restore packages from renv.lock instead of committing libraries.
+renv/library/
+renv/staging/
+renv/cache/
+# Offline reference is distributed in the ZIP, not needed in the repository.
+preview/
+
+worthwhile-backup-*.json
+*.previous.json
+*.schema*.backup.json
