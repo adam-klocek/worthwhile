@@ -10,7 +10,15 @@ v2_templates <- function()list(
  attendance=data.frame(id=character(),source_id=character(),job_id=character(),date=character(),title=character(),start=numeric(),end=numeric()),
  reflections=data.frame(period=character(),date=character(),note=character()))
 v2_upgrade <- function(s) {
- for(n in v2_tables())if(is.null(s[[n]]))s[[n]]<-v2_templates()[[n]]
+ templates<-v2_templates()
+ for(n in v2_tables()) {
+  if(is.null(s[[n]]))s[[n]]<-templates[[n]]
+  # JSON object keys have no meaningful order (Postgres jsonb reorders them).
+  # Restore column order only for an exact schema match; preserve every value
+  # and leave missing, duplicate or unknown columns for validation to reject.
+  d<-s[[n]];cols<-names(templates[[n]])
+  if(is.data.frame(d)&&!anyDuplicated(names(d))&&setequal(names(d),cols))s[[n]]<-d[,cols,drop=FALSE]
+ }
  defaults<-list(reserve_pct=20,timesheet_start=7,timesheet_end=17,timesheet_lunch_start=12,timesheet_lunch_end=13)
  for(n in names(defaults))if(is.null(s$settings[[n]]))s$settings[[n]]<-defaults[[n]]
  if(identical(s$settings$plan_strategy,'Social impact'))s$settings$plan_strategy<-'Category:social'

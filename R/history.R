@@ -25,13 +25,13 @@ migrate_state <- function(s) {
   if(is.null(s$locks))s$locks<-empty_locks()
   if(is.null(s$revision))s$revision<-0L
   if(is.null(s$log_sequence))s$log_sequence<-max(c(0,suppressWarnings(as.numeric(sub('^l','',c(s$logs$id,s$archive$logs$id))))),na.rm=TRUE)
-  # Legacy columns were appended during earlier migrations. Canonical ordering
-  # keeps active and archived records compatible without dropping any fields.
+  # Legacy migrations and JSONB storage can reorder object keys. Restore only
+  # exact column sets, without dropping fields or changing active/archive rows.
   template<-demo_state(as.Date('2026-01-05'))
-  for(nm in record_tables)for(place in c('current','archive')) {
+  for(nm in c(record_tables,'exceptions','locks'))for(place in if(nm%in%record_tables)c('current','archive')else'current') {
     d<-if(place=='current')s[[nm]] else s$archive[[nm]]
     cols<-names(template[[nm]])
-    if(setequal(names(d),cols))d<-d[,cols,drop=FALSE]
+    if(is.data.frame(d)&&!anyDuplicated(names(d))&&setequal(names(d),cols))d<-d[,cols,drop=FALSE]
     if(place=='current')s[[nm]]<-d else s$archive[[nm]]<-d
   }
   v2_upgrade(s)
