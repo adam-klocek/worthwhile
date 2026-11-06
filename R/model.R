@@ -114,6 +114,8 @@ rank_tasks <- function(s, strategy='Balanced', today=Sys.Date(), seed=1, balance
       set.seed(as.integer(seed));runif(nrow(t))
     },
     .25*urgency+.2*risk+.15*cash+.1*fair+.15*t$personal/5+.1*t$career/5+.05*t$social/5)
+  if(startsWith(strategy,'Category:'))score<-category_scores(s,t,sub('^Category:','',strategy))/5
+  if(strategy=='Balanced')score<-.25*urgency+.2*risk+.15*cash+.1*fair+.15*t$personal/5+category_blend(s,t)
   t$urgency_factor<-urgency;t$risk_factor<-risk;t$cash_factor<-cash;t$balance_factor<-fair
   t$score <- round(score,4); t$net_hour <- e$net_hour; t$salary_hour <- e$salary_hour
   t$why <- paste0('Due ',due,ifelse(t$hard,' (fixed)',' (flexible)'),'; nudges ',t$nudges,'; consequence ',t$consequence,'/5; cash ',round(e$net_hour,1),'/h',ifelse(blocked,'; waiting on dependency',''))
@@ -195,7 +197,7 @@ opportunity_scenario <- function(base,odds_multiplier,benefit,years,discount,cos
 }
 validate_state <- function(s) {
   fail <- function(msg) stop(msg,call.=FALSE)
-  if(!is.list(s) || !identical(as.integer(s$schema),4L)) fail('Unsupported backup version.')
+  if(!is.list(s) || !identical(as.integer(s$schema),5L)) fail('Unsupported backup version.')
   template <- demo_state(as.Date('2026-01-05'))
   for(nm in c('jobs','allocations','tasks','goals','availability','blocks','logs')) {
     d <- s[[nm]]; ref <- template[[nm]]
@@ -252,5 +254,6 @@ validate_state <- function(s) {
   if(any(at$original_estimate<=0)||any(at$done & at$remaining!=0))fail('Invalid historical task estimate.')
   validate_opportunities(s)
   validate_overlays(s)
+  validate_v2(s)
   TRUE
 }

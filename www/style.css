@@ -2223,3 +2223,39 @@ main:focus {
 .auth-shell{max-width:680px;margin:var(--space-7) auto;padding:0 var(--space-5)}
 .auth-brand{margin:var(--space-6) 0}.auth-brand .brand{margin-bottom:var(--space-4)}
 .auth-card h1{font-size:36px}.app-footer{flex-wrap:wrap}.app-footer p{margin:8px 0;font-size:12px}.footer-brand{font:20px var(--font-display);color:var(--ink)}.funding-credit{max-width:860px;color:var(--muted);line-height:1.8}.auth-shell+.app-footer{max-width:1100px;margin:var(--space-6) auto;padding:var(--space-5)}
+
+/* Worthwhile 2.0: calm, natural surfaces and a single sans-serif hierarchy. */
+h1,h2,h3,h4 {font-family:var(--font-body);font-weight:600;color:var(--iris);letter-spacing:-.025em;line-height:1.25}
+h1 {font-size:clamp(28px,3.4vw,42px)}
+.worthwhile-logo {display:block;width:184px;height:40px;max-width:100%}
+.navbar-brand {height:auto;padding-top:13px;padding-bottom:13px}
+.app-tagline {display:flex;flex-wrap:wrap;gap:8px 24px}
+.tagline-secondary {color:var(--muted);font-size:13px}
+.role-comparison {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4);margin-bottom:var(--space-5)}
+.role-week-card {border:1px solid var(--line);border-top:3px solid var(--lavender);border-radius:var(--radius);padding:var(--space-5);background:var(--surface)}
+.role-week-card.positive {background:var(--success-bg);border-top-color:var(--success)}
+.role-week-card.negative {background:var(--error-bg);border-top-color:var(--error)}
+.role-week-card.positive h3 {color:var(--success)}
+.role-week-card.negative h3 {color:var(--error)}
+.role-week-card small {display:block;color:var(--muted)}
+.chore-row {display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chore-row small {color:var(--muted);font-size:12px}
+.chore-row.is-complete>span {text-decoration:line-through;color:var(--muted)}
+.chore-row.needs-attention {border-left:3px solid var(--warning);padding-left:10px;background:var(--warning-bg)}
+.chore-check {border:0;background:transparent;color:var(--iris);font-size:22px;min-height:44px;min-width:44px}
+.task-all-details {border-top:1px solid var(--line);padding-top:var(--space-4);margin-top:var(--space-4)}
+.calendar-dropzone {cursor:crosshair;outline-offset:-3px}
+.calendar-block {pointer-events:none}
+.calendar-task {cursor:grab;touch-action:pan-y}
+.calendar-task.is-dragging {opacity:.5}
+.calendar-dropzone.drop-target {outline:3px solid var(--iris);background:var(--success-bg)}
+.calendar-activity {position:absolute;left:4px;right:4px;z-index:4;border:1px solid var(--control-line);border-radius:8px;background:var(--soft);color:var(--ink);font:inherit;text-align:left;padding:5px 7px;overflow:hidden;cursor:pointer}
+.calendar-activity small {display:block;font-size:10px}
+.calendar-activity strong {font-size:11px;line-height:1.2;display:block}
+.shiny-table-output {overflow-x:auto}
+#capacity-adjustment {min-width:160px}
+@media(max-width:600px){.role-comparison {grid-template-columns:1fr}.worthwhile-logo {width:155px}.calendar-toolbar {gap:8px}.tagline-secondary {display:block}}
+
+.balance-matrix .balance-positive {background:var(--success-bg);color:var(--success)}
+.balance-matrix .balance-negative {background:var(--error-bg);color:var(--error)}
+.balance-matrix small {display:block}

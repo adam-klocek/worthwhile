@@ -1,13 +1,13 @@
-# Worthwhile Modern Intellect. Authoritative colours for UI and R graphics.
+# Worthwhile Time, growth and intention. Authoritative colours for UI and R graphics.
 # Regenerate www/tokens.css with: Rscript tools/build-theme.R
-worthwhile_version <- '0.6.0'
+worthwhile_version <- '2.0.0'
 design_tokens <- list(
-  ink='#292D3E', accent='#777AB5', accent_text='#56598F',
-  lavender='#B7B8E5', clay='#D6AFA4', background='#F4F3F0',
-  surface='#FFFFFF', muted='#626575', line='#DDDDE5',
-  control_line='#898B9B', soft='#ECECF5',
-  success='#366A5E', warning='#855A25', error='#A13C4B', info='#435F86',
-  soft_success='#EAF2EE', soft_warning='#F8F0E4', soft_error='#F8E9EC', soft_info='#EAF0F8'
+  ink='#30352F', accent='#304F3B', accent_text='#304F3B',
+  lavender='#9CAF82', clay='#D9BA78', background='#FAF8F2',
+  surface='#FFFFFF', muted='#5C6559', line='#DFE4D8',
+  control_line='#7B8677', soft='#EDF0E7',
+  success='#356044', warning='#785812', error='#A43832', info='#3E6275',
+  soft_success='#EDF4E9', soft_warning='#F8F1DF', soft_error='#F9ECE9', soft_info='#EAF1F4'
 )
 role_palette <- c(design_tokens$accent,'#A77F74','#4D7A70','#647C9C','#917897','#8B7D52','#5C8585','#8F6C78')
 # R-to-CSS mapping keeps historic plotting names compatible.
@@ -22,5 +22,5 @@ theme_tokens_css <- function() {
     '  --space-4: 16px;', '  --space-5: 24px;', '  --space-6: 32px;',
     '  --space-7: 48px;', '  --space-8: 64px;',
     '  --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;',
-    '  --font-display: Lora, Georgia, "Times New Roman", serif;', '}'),collapse='\n')
+    '  --font-display: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;', '}'),collapse='\n')
 }

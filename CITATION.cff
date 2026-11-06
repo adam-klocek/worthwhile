@@ -5,5 +5,5 @@ type: software
 authors:
   - family-names: Klocek
     given-names: Adam
-version: 0.6.0
-date-released: 2026-10-23
+version: 2.0.0
+date-released: 2026-11-05

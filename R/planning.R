@@ -12,7 +12,10 @@ apply_dated_grid <- function(g,s,anchor) {
   }
   # Availability cannot remove fixed commitments or protected life.
   for(i in seq_len(nrow(e))) {
-    d<-as.integer(as.Date(e$date[i])-as.Date(anchor))+1L;ix<-interval_indices(d,e$start[i],e$end[i])
+    d<-as.integer(as.Date(e$date[i])-as.Date(anchor))+1L
+    a<-if(e$kind[i]=='Available')ceiling(e$start[i]*4-1e-8)/4 else floor(e$start[i]*4+1e-8)/4
+    b<-if(e$kind[i]=='Available')floor(e$end[i]*4+1e-8)/4 else ceiling(e$end[i]*4-1e-8)/4
+    ix<-if(b>a)interval_indices(d,a,b)else integer()
     if(e$kind[i]=='Available')g$available[ix]<-TRUE else {
       g$blocked[ix]<-TRUE;g$label[ix]<-ifelse(nzchar(g$label[ix]),paste(g$label[ix],e$title[i],sep=' / '),e$title[i]);g$kind[ix]<-if(e$kind[i]=='Meeting')'Meeting'else'Essential';g$job_id[ix]<-e$job_id[i]
     }
@@ -81,7 +84,8 @@ validate_overlays <- function(s) {
     d<-s[[nm]];ref<-if(nm=='exceptions')empty_exceptions()else empty_locks()
     if(!is.data.frame(d)||!identical(names(d),names(ref))||anyNA(d)||nrow(d)>10000)fail(paste('Invalid',nm))
     if(anyDuplicated(d$id)||any(!grepl('^[A-Za-z][A-Za-z0-9_]*$',d$id)))fail('Invalid dated-record IDs.')
-    if(!is.numeric(d$start)||!is.numeric(d$end)||any(!is.finite(d$start)|!is.finite(d$end))||any(d$start<0|d$end>24|d$start>=d$end|d$start*4!=round(d$start*4)|d$end*4!=round(d$end*4)))fail('Dated intervals must be same-day quarter-hour ranges. Split overnight exceptions across two dates.')
+    factor<-if(nm=='locks')4 else 60
+    if(!is.numeric(d$start)||!is.numeric(d$end)||any(!is.finite(d$start)|!is.finite(d$end))||any(d$start<0|d$end>24|d$start>=d$end|abs(d$start*factor-round(d$start*factor))>1e-7|abs(d$end*factor-round(d$end*factor))>1e-7))fail('Use same-day intervals: task locks in 15-minute steps, one-off activities in whole minutes. Split overnight activities across two dates.')
     date<-suppressWarnings(as.Date(d$date,format='%Y-%m-%d'));if(anyNA(date)||any(format(date,'%Y-%m-%d')!=d$date))fail('Invalid exception or locked-block date.')
   }
   if(any(!s$exceptions$kind%in%c('Available','Unavailable','Meeting'))||any(s$exceptions$kind=='Meeting' & !s$exceptions$job_id%in%s$jobs$id))fail('Invalid dated meeting or availability type.')
@@ -91,7 +95,7 @@ validate_overlays <- function(s) {
   if(length(s$revision)!=1||!is.finite(s$revision)||s$revision<0)fail('Invalid revision number.')
   if(length(s$log_sequence)!=1||!is.finite(s$log_sequence)||s$log_sequence<0||s$log_sequence!=round(s$log_sequence))fail('Invalid work-session sequence.')
   st<-s$settings
-  if(!is.null(st$plan_strategy)&&(!is.character(st$plan_strategy)||length(st$plan_strategy)!=1||!st$plan_strategy%in%strategies))fail('Invalid saved decision lens.')
+  if(!is.null(st$plan_strategy)&&(!is.character(st$plan_strategy)||length(st$plan_strategy)!=1||!st$plan_strategy%in%decision_lenses(s)))fail('Invalid saved decision lens.')
   for(col in c('plan_buffer','plan_cap'))if(!is.null(st[[col]])) {
     x<-st[[col]];lim<-if(col=='plan_buffer')c(0,70)else c(.25,16)
     if(!is.numeric(x)||length(x)!=1||!is.finite(x)||x<lim[1]||x>lim[2])fail('Invalid saved planning preference.')

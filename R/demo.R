@@ -39,5 +39,5 @@ demo_state <- function(today=Sys.Date()) {
   s<-list(schema=4L,settings=list(currency='EUR',timezone='Europe/Prague',fulltime=40,setup_complete=FALSE,example_mode=TRUE),jobs=jobs,allocations=data.frame(id=c('c1','c2'),job_id=c('j1','j1'),name=c('Teaching','Research'),fte=c(.3,.2),stringsAsFactors=FALSE),goals=goals,tasks=tasks,availability=availability,blocks=blocks,logs=data.frame(id=character(),task_id=character(),job_id=character(),date=character(),hours=numeric(),note=character(),created_at=character(),updated_at=character(),stringsAsFactors=FALSE))
   s$exceptions<-empty_exceptions();s$locks<-empty_locks();s$revision<-0L;s$log_sequence<-0
   s$opportunities<-example_opportunities(s,today)
-  s$archive<-lapply(s[c('jobs','allocations','tasks','goals','availability','blocks','logs','opportunities')],function(d)d[FALSE,,drop=FALSE]);s
+  s$archive<-lapply(s[c('jobs','allocations','tasks','goals','availability','blocks','logs','opportunities')],function(d)d[FALSE,,drop=FALSE]);v2_upgrade(s)
 }

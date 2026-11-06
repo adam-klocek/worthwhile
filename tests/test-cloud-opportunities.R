@@ -13,7 +13,7 @@ s<-delete_goal(s,x$goal_id);stopifnot(s$opportunities$goal_id[4]=='',validate_st
 # Non-billable preparation in an hourly role never becomes guaranteed task pay.
 a<-new_opportunity('o101','j5','Unpaid proposal',Sys.Date()+10);s<-demo_state();s$opportunities<-rbind(s$opportunities,a);z<-create_opportunity_goal(s,'o101');stopifnot(tail(task_economics(z$state)$gross,1)==0,!tail(z$state$tasks$billable,1))
 # A genuine schema-3 plan lacked this table in both current and archive.
-s<-demo_state();s$schema<-3L;s$opportunities<-NULL;s$archive$opportunities<-NULL;f<-tempfile();jsonlite::write_json(s,f,auto_unbox=TRUE,dataframe='columns');z<-read_backup(f);unlink(f);stopifnot(z$schema==4L,nrow(z$opportunities)==0,validate_state(z))
+s<-demo_state();s$schema<-3L;s$opportunities<-NULL;s$archive$opportunities<-NULL;f<-tempfile();jsonlite::write_json(s,f,auto_unbox=TRUE,dataframe='columns');z<-read_backup(f);unlink(f);stopifnot(z$schema==5L,nrow(z$opportunities)==0,validate_state(z))
 # Mock transport exercises per-user JWTs, verified identity, refresh rotation,
 # persistence, conflict handling and token removal. It does not contact Supabase.
 uid1<-'11111111-1111-4111-8111-111111111111';uid2<-'22222222-2222-4222-8222-222222222222'
@@ -38,28 +38,12 @@ s$tasks$title[1]<-'B private';b$save(s,0);stopifnot(a$load()$tasks$title[1]!='B 
 stopifnot(inherits(tryCatch({a$save(s,0);NULL},error=identity),'error'))
 now<-60;a$refresh();stopifnot(any(vapply(remote$calls,function(x)grepl('refresh_token',x$url,fixed=TRUE),logical(1))))
 a$logout();stopifnot(is.null(a$user()),inherits(tryCatch({a$load();NULL},error=identity),'error'),b$load()$tasks$title[1]=='B private')
-# Real modules: compare options, create a linked goal in one action, open editor.
+# Disabled modules retain data and cannot mutate through their old controls.
 shiny::testServer(server,{
- session$setInputs(week=as.character(Sys.Date()),buffer=15,cap=8,protect=TRUE,`decide-future-compare`=c('o1','o2'),`decide-future-sort`='Expected economic value per hour')
- stopifnot(nrow(decisions$opportunities$report())==2)
- stopifnot(grepl('Save an opportunity',output[['decide-future-connection']]$html,fixed=TRUE))
- before<-nrow(state()$goals);session$setInputs(`decide-future-selected`='o2',`decide-future-goal`=1)
- stopifnot(nrow(state()$goals)==before+1,nrow(state()$tasks)==18,nzchar(state()$opportunities$goal_id[2]))
- gid<-state()$opportunities$goal_id[2]
- session$setInputs(`goals-title`='Adjusted proposal goal',`goals-job`='j2',`goals-target`=1,`goals-baseline`=0,`goals-unit`='submission',`goals-start`=as.character(Sys.Date()),`goals-end`=as.character(Sys.Date()+45),`goals-save`=1)
- stopifnot(state()$goals$title[match(gid,state()$goals$id)]=='Adjusted proposal goal')
- session$setInputs(`decide-future-goal`=2);stopifnot(nrow(state()$goals)==before+1)
- session$setInputs(`decide-future-delete`=1);session$setInputs(`decide-future-delete_confirm`=1)
- stopifnot(!'o2'%in%state()$opportunities$id,gid%in%state()$goals$id)
- session$setInputs(`insights-purge_kind`='opportunities',`insights-purge_id`='o2',`insights-purge`=1);session$setInputs(`insights-purge_confirm`=1)
- stopifnot(!'o2'%in%state()$archive$opportunities$id,gid%in%state()$goals$id)
- stopifnot(grepl('focused call',output[['insights-opportunities']],fixed=TRUE))
- session$setInputs(`decide-future-new`=1)
- session$setInputs(`decide-future-name`='Small client grant',`decide-future-job`='j5',`decide-future-kind`='Grant',`decide-future-status`='Considering',`decide-future-deadline`=as.character(Sys.Date()+30),`decide-future-hours`=4,`decide-future-low`=10,`decide-future-base`=20,`decide-future-high`=70,`decide-future-income_success`=1000,`decide-future-income_failure`=0,`decide-future-cost_upfront`=50,`decide-future-cost_success`=0,`decide-future-cost_failure`=10,`decide-future-award_total`=5000,`decide-future-years`=1,`decide-future-discount`=5,`decide-future-alt`=25,`decide-future-group`='',`decide-future-basis`='Call history assumption',`decide-future-notes`='',`decide-future-goal_link`='',`decide-future-save`=1)
- count<-nrow(state()$opportunities);i<-match('Small client grant',state()$opportunities$name);stopifnot(!is.na(i),state()$opportunities$p_base[i]==.2)
- session$setInputs(`decide-future-base`=50,`decide-future-save`=2)
- stopifnot(nrow(state()$opportunities)==count,state()$opportunities$p_base[i]==.5)
-
+ session$setInputs(week=as.character(Sys.Date()),buffer=15,cap=8,protect=TRUE)
+ before<-state()$opportunities
+ session$setInputs(`decide-future-selected`='o2',`decide-future-goal`=1,`decide-apply`=1)
+ stopifnot(identical(before,state()$opportunities),nrow(state()$tasks)==17)
 })
 # Cloud entry gate does not reveal the planner before credentials/configuration.
 Sys.setenv(WORTHWHILE_MODE='supabase',SUPABASE_URL='',SUPABASE_PUBLISHABLE_KEY='');source('app.R')

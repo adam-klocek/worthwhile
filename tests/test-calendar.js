@@ -1,0 +1,22 @@
+// Dependency-free event tests for the actual calendar interaction script.
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const handlers={},sent=[];let now=1000;
+const names=new Set();const cls={add:x=>names.add(x),remove:(...xs)=>xs.forEach(x=>names.delete(x)),contains:x=>names.has(x)};
+const zone={dataset:{date:'2026-11-11',hourStart:'6',hourEnd:'23'},getBoundingClientRect:()=>({top:0,height:680}),classList:{...cls,contains:x=>x==='calendar-dropzone'},closest:s=>s==='.calendar-dropzone'?zone:null};
+const task={dataset:{task:'t1',date:'2026-11-10',start:'9',end:'11'},classList:cls,closest:s=>s==='.calendar-task'?task:s==='.calendar-dropzone'?zone:null};
+const activity={dataset:{activity:'x1'},closest:s=>s==='.calendar-activity'?activity:s==='.calendar-dropzone'?zone:null};
+const shiny={setInputValue:(id,v,options)=>sent.push({id,v,options})};
+const document={addEventListener:(event,fn)=>handlers[event]=fn,querySelectorAll:()=>[{classList:cls}]};
+vm.runInNewContext(fs.readFileSync('www/calendar.js','utf8'),{document,window:{Shiny:shiny},Shiny:shiny,Date:{now:()=>now},console});
+handlers.click({target:zone,clientY:140});assert.equal(sent.at(-1).v.start,9.5);assert.equal(sent.at(-1).v.end,10.5);
+handlers.click({target:task});assert.equal(sent.at(-1).v.task_id,'t1');assert.equal(sent.at(-1).v.original_start,9);
+handlers.click({target:activity});assert.equal(sent.at(-1).v.action,'activity');assert.equal(sent.at(-1).v.id,'x1');
+let prevented=false;handlers.keydown({target:zone,key:'Enter',preventDefault:()=>prevented=true});assert(prevented);assert.equal(sent.at(-1).v.date,'2026-11-11');
+const transfer={setData:(type,data)=>assert.equal(JSON.parse(data).task_id,'t1')};
+handlers.dragstart({target:task,dataTransfer:transfer});assert.equal(transfer.effectAllowed,'move');
+handlers.dragover({target:zone,dataTransfer:transfer,preventDefault:()=>{}});assert.equal(transfer.dropEffect,'move');
+handlers.drop({target:zone,clientY:280,preventDefault:()=>{}});assert.equal(sent.at(-1).v.gesture,'drop');assert.equal(sent.at(-1).v.start,13);assert.equal(sent.at(-1).v.end,15);assert.equal(sent.at(-1).v.original_date,'2026-11-10');
+const count=sent.length;handlers.click({target:zone,clientY:20});assert.equal(sent.length,count,'drop must not accidentally add an activity');
+now+=500;handlers.click({target:zone,clientY:20});assert.equal(sent.length,count+1);
+assert(sent.every(x=>x.id==='capacity-canvas'&&x.options.priority==='event'));
+console.log('PASS: calendar click, keyboard, activity editor, drag payload, time conversion, duration preservation and drop/click separation.');

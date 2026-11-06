@@ -29,5 +29,5 @@ setup_state <- function(config,jobs,tasks,events) {
       a<-(wake+offset)%%24;add(d,'Bathroom & movement','Essential',a,(a+.25)%%24)
     }
   }
-  validate_state(s);s
+  s<-v2_upgrade(s);validate_state(s);s
 }

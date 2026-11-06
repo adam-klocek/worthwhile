@@ -21,7 +21,7 @@ decode_state <- function(s) {
     if(!length(d)||!length(d[[1]]))s[[nm]]<-template[[nm]][FALSE,,drop=FALSE]
     else s[[nm]]<-as.data.frame(d,stringsAsFactors=FALSE)
   }
-  for(nm in c('exceptions','locks'))if(!is.null(s[[nm]])){d<-s[[nm]];s[[nm]]<-if(!length(d)||!length(d[[1]]))template[[nm]][FALSE,,drop=FALSE]else as.data.frame(d,stringsAsFactors=FALSE)}
+  for(nm in c('exceptions','locks',v2_tables()))if(!is.null(s[[nm]])){d<-s[[nm]];s[[nm]]<-if(!length(d)||!length(d[[1]]))template[[nm]][FALSE,,drop=FALSE]else as.data.frame(d,stringsAsFactors=FALSE)}
   if(!is.null(s$archive))for(nm in record_tables) {
     d<-s$archive[[nm]]
     if(is.null(d)||!length(d)||!length(d[[1]]))s$archive[[nm]]<-template[[nm]][FALSE,,drop=FALSE]
@@ -57,10 +57,11 @@ calendar_html <- function(s,p,anchor,start_hour=6,end_hour=23,days=1:7,today=as.
     tags$div(class='calendar-hours',tags$div(class='calendar-day-head'),tags$div(class='calendar-deadlines hour-label','Due'),tags$div(class='calendar-day-body',lapply(seq(start_hour,end_hour),function(h)tags$span(style=paste0('top:',100*(h-start_hour)/span,'%'),fmt_hour(h))))),
     lapply(days,function(d){g<-p$grid[p$grid$day==d,,drop=FALSE];task<-p$plan[p$plan$day==d,,drop=FALSE];groups<-rle(paste(g$blocked,g$reserved,g$available,g$kind,g$label));ends<-cumsum(groups$lengths);starts<-c(1,head(ends,-1)+1);date<-as.Date(anchor)+d-1
       tags$div(class=paste('calendar-day',if(date==today)'is-today'else''),tags$div(class='calendar-day-head',tags$span(c('Mon','Tue','Wed','Thu','Fri','Sat','Sun')[d]),tags$strong(format(date,'%d'))),tags$div(class='calendar-deadlines',{due<-s$tasks[!s$tasks$done & effective_due(s$tasks)==date,,drop=FALSE];tagList(lapply(seq_len(min(2,nrow(due))),function(i)tags$button(type='button',class=paste('deadline-chip',task_urgency(due[i,],today)),title=due$title[i],onclick=sprintf("Shiny.setInputValue('calendar_pick','%s',{priority:'event'})",due$id[i]),paste(if(due$hard[i])'Due'else'Aim',due$title[i]))),if(nrow(due)>2)tags$small(paste('+',nrow(due)-2,'deadlines')))}),
-        tags$div(class='calendar-day-body',lapply(seq_along(starts),function(k){a<-starts[k];b<-ends[k];from<-max(start_hour,g$start[a]);to<-min(end_hour,g$start[b]+.25);if(to<=from||(!g$blocked[a]&&!g$reserved[a]&&!g$available[a]))return(NULL);kind<-if(g$blocked[a])g$kind[a]else if(g$reserved[a])'buffer'else'open';title<-if(g$blocked[a])g$label[a]else if(g$reserved[a])'Breathing room'else''
+        tags$div(class='calendar-day-body calendar-dropzone','data-date'=as.character(date),'data-hour-start'=start_hour,'data-hour-end'=end_hour,tabindex='0',role='button','aria-label'=paste('Add an activity on',date),lapply(seq_along(starts),function(k){a<-starts[k];b<-ends[k];from<-max(start_hour,g$start[a]);to<-min(end_hour,g$start[b]+.25);if(to<=from||(!g$blocked[a]&&!g$reserved[a]&&!g$available[a]))return(NULL);kind<-if(g$blocked[a])g$kind[a]else if(g$reserved[a])'buffer'else'open';title<-if(g$blocked[a])g$label[a]else if(g$reserved[a])'Breathing room'else''
           tags$div(class=paste('calendar-block',tolower(kind)),style=top_style(from,to),title=paste(title,fmt_hour(g$start[a]),'–',fmt_hour(g$start[b]+.25)),if(to-from>=.75)tags$small(title))}),
           lapply(seq_len(nrow(task)),function(i){r<-task[i,];a<-max(start_hour,r$start);b<-min(end_hour,r$end);if(b<=a)return(NULL);colour<-job_colour(s,r$job_id);t<-s$tasks[match(r$task_id,s$tasks$id),];urgency<-task_urgency(t,today)
-            tags$button(type='button',class=paste('calendar-task',urgency),style=paste0(top_style(a,b),';--job-colour:',colour,';background:',colour,'22'),title=paste(r$title,fmt_hour(r$start),'–',fmt_hour(r$end),if(urgency=='urgent')'· Needs attention'else'',if(nzchar(t$collaborators))paste('·',t$collaborators)else''),'aria-label'=paste(r$title,fmt_hour(r$start),'to',fmt_hour(r$end),if(urgency=='urgent')'Needs attention'else''),onclick=sprintf("Shiny.setInputValue('calendar_pick','%s',{priority:'event'})",r$task_id),if(b-a>=.5)tags$strong(r$title),if(b-a>=1)tags$small(paste(fmt_hour(r$start),'–',fmt_hour(r$end),if(urgency=='urgent')'· Attention'else'')))}),
+            tags$button(type='button',draggable='true','data-task'=r$task_id,'data-date'=r$date,'data-start'=r$start,'data-end'=r$end,class=paste('calendar-task',urgency),style=paste0(top_style(a,b),';--job-colour:',colour,';background:',colour,'22'),title=paste(r$title,fmt_hour(r$start),'–',fmt_hour(r$end),if(urgency=='urgent')'· Needs attention'else'',if(nzchar(t$collaborators))paste('·',t$collaborators)else''),'aria-label'=paste(r$title,fmt_hour(r$start),'to',fmt_hour(r$end),if(urgency=='urgent')'Needs attention'else''),onclick=NULL,if(b-a>=.5)tags$strong(r$title),if(b-a>=1)tags$small(paste(fmt_hour(r$start),'–',fmt_hour(r$end),if(urgency=='urgent')'· Attention'else'')))}),
+          lapply(which(s$exceptions$date==as.character(date)&s$exceptions$kind!='Available'),function(i){r<-s$exceptions[i,];a<-max(start_hour,r$start);b<-min(end_hour,r$end);if(b<=a)return(NULL);tags$button(type='button',class='calendar-activity','data-activity'=r$id,style=top_style(a,b),title=paste(r$title,fmt_hour(r$start),'–',fmt_hour(r$end)),tags$strong(r$title),tags$small(paste(fmt_hour(r$start),'–',fmt_hour(r$end))))}),
           if(date==today){now<-as.POSIXlt(Sys.time(),tz=s$settings$timezone);h<-now$hour+now$min/60;if(h>=start_hour&&h<=end_hour)tags$div(class='calendar-now',style=paste0('top:',100*(h-start_hour)/span,'%'),title='Now')}
         )
       )
@@ -85,9 +86,11 @@ task_explanation <- function(s,r,p,today,strategy) {
   tags$div(class='explanation',tags$p(paste('Ranked within priority tier',r$tier,'using',strategy,'· score',r$score)),tags$ul(
     tags$li(if(r$blocked)'An unfinished dependency or unresolved block prevents scheduling.'else'No unresolved prerequisite is blocking this task.'),
     tags$li(paste('Deadline:',effective_due(r),if(r$hard)'fixed'else'flexible','·',r$nudges,'nudges · consequence rating',r$consequence,'of 5.')),
-    tags$li(paste('Your ratings: personal',r$personal,'· career',r$career,'· social',r$social,'of 5.')),
+    tags$li(paste('Your ratings: personal meaning',r$personal,'of 5.',paste(vapply(which(s$categories$enabled),function(i)paste(s$categories$label[i],category_scores(s,r,s$categories$id[i]),'of 5'),character(1)),collapse=' · '))),
     if(length(goal)&&!is.na(goal))tags$li(paste('Supports:',goal))else tags$li('No goal is currently linked.'),
     tags$li(paste(round(r$net_hour,2),s$settings$currency,'per hour in estimated marginal net value before tax. Salary is not extra task cash.')),
     tags$li(paste(hours,'of',r$remaining,'remaining hours fit this draft week. A partial fit is not completion.')),
     tags$li(if(r$hard && days<=2)'Delaying this may miss its fixed deadline. The app has no evidence of consequences beyond your entered rating.'else'Any impact of delay depends on your deadline flexibility and consequence rating; it is not independently predicted.')))
 }
+
+brand_logo <- function()tags$span(class='brand',tags$img(src='logo-horizontal.svg',alt='Worthwhile',class='worthwhile-logo',width=184,height=40))

@@ -1,8 +1,8 @@
 author_name <- 'Mgr. Adam Klocek, Ph.D.'
 funding_sentence <- 'Funded by the project Mediated Society (MEDIS:ON), registration number: CZ.02.01.01/00/23_025/0008713, supported by the European Union and Czech Republic.'
-credit_footer <- function()tags$footer(class='app-footer',tags$div(tags$span(class='footer-brand','Worthwhile'),tags$p(paste('Author:',author_name))),tags$p(class='funding-credit',funding_sentence))
+credit_footer <- function()tags$footer(class='app-footer',tags$div(tags$span(class='footer-brand','Worthwhile'),tags$p('Your time has value. Spend it intentionally.'),tags$p(paste('Author:',author_name))),tags$p(class='funding-credit',funding_sentence))
 authUI <- function(signup=TRUE,message=NULL)tagList(
- tags$div(class='auth-shell',tags$div(class='auth-brand',tags$span(class='brand',tags$span(class='brand-mark','W'),'Worthwhile'),tags$p(class='lead','Make better decisions about what deserves your time.')),
+ tags$div(class='auth-shell',tags$div(class='auth-brand',brand_logo(),tags$p(class='lead','Make better decisions about what deserves your time.'),tags$p('An ADHD friendly planning and reflecting tool.')),
  tags$section(class='setup-card auth-card',tags$p(class='eyebrow','YOUR PRIVATE WORKSPACE'),tags$h1('A little clarity starts here.'),if(!is.null(message))tags$div(class='notice warning',message),
  textInput('auth_email','Email',placeholder='you@example.com'),passwordInput('auth_password','Password'),tags$div(class='card-actions',actionButton('auth_signin','Sign in',class='btn-primary'),if(signup)actionButton('auth_signup','Create account',class='btn-quiet')),tags$p(class='hint','Your tasks and work history are saved to your own account. Passwords are sent over HTTPS to Supabase Auth; they are not stored in your plan.'),tags$p(class='hint','If registration requires email confirmation, confirm your email and return here to sign in. Signing out or refreshing ends this app connection; sign in again to resume.'))),credit_footer())
 cloudServer <- function(input,output,session) {

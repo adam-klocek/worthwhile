@@ -1,0 +1,27 @@
+# Boundary cases for additive accounting. No Shiny session required.
+for(f in c('design.R','model.R','opportunities.R','planning.R','demo.R','history.R','v2_model.R','setup_model.R','ui_helpers.R','mod_calendar_v2.R'))source(file.path('R',f))
+s<-demo_state(as.Date('2026-11-02'));s<-log_work(s,'t1',2,'2026-11-08');s<-set_session_details(s,tail(s$logs$id,1),23,0)
+a<-role_week_report(s,'2026-11-02');b<-role_week_report(s,'2026-11-09');stopifnot(a$Actual_h[1]==1,b$Actual_h[1]==1)
+s<-demo_state(as.Date('2026-11-02'));s<-log_work(s,'t1',2,'2026-11-30');s<-set_session_details(s,tail(s$logs$id,1),23.5,0)
+a<-actual_timesheet(s,'2026-11-01','2026-11-30');b<-actual_timesheet(s,'2026-12-01','2026-12-31');stopifnot(sum(a$Hours[a$Type=='Task'])==.5,sum(b$Hours[b$Type=='Task'])==1.5,any(b$Start=='00:00'))
+s<-demo_state(as.Date('2026-11-02'));s<-log_work(s,'t11',2,'2026-11-03');id<-tail(s$logs$id,1);s<-set_session_details(s,id,9,4);stopifnot(s$tasks$units[11]==16);s<-set_session_details(s,id,9,6);stopifnot(s$tasks$units[11]==14);s<-delete_work_session(s,id);stopifnot(s$tasks$units[11]==20,nrow(s$session_details)==0,validate_state(s))
+s<-demo_state(as.Date('2026-11-02'));s<-log_work(s,'t1',2,'2026-11-03');s<-set_session_details(s,tail(s$logs$id,1),9,0);meet<-commitment_events(s,'2026-11-03','2026-11-03','Meeting');s$attendance<-meet[,names(s$attendance),drop=FALSE];r<-role_week_report(s,'2026-11-02');stopifnot(abs(r$Actual_h[1]-2)<1e-7)
+s<-delete_job(demo_state(as.Date('2026-11-02')),'j3');r<-role_week_report(s,'2026-12-07');stopifnot(!'j3'%in%r$Job_id)
+s<-blank_state(as.Date('2026-11-02'));s$settings$setup_complete<-TRUE;s$availability<-data.frame(id='a1',day=5,start=8,end=18);s$chores<-data.frame(id='ch1',title='Bins',period='Weekly',minutes=60,start_date='2026-11-02',active=TRUE)
+a<-period_capacity(s,'2026-11-02','2026-11-08',as.Date('2026-11-06'));stopifnot(a$chores==1)
+s<-toggle_chore(s,'ch1','2026-11-06');a<-period_capacity(s,'2026-11-02','2026-11-08',as.Date('2026-11-06'));stopifnot(a$chores==0)
+cat('PASS: overnight week/month allocation, piece-quantity correction and deletion, meeting overlap, archived-role budgets and whole remaining weekly chore allowance.\n')
+# A reflection reserve reports pressure against the real draft, not a silently smaller replanned draft.
+s$settings$plan_buffer<-0;s$settings$plan_cap<-12;s$jobs<-simple_job('j1','Role','Hourly',hours=10,rate=20);s$tasks<-simple_task('t1','j1','Nine hours',9,as.Date('2026-11-08'));a<-period_capacity(s,'2026-11-02','2026-11-08',as.Date('2026-11-06'));stopifnot(a$capacity==8,a$planned==9,a$over==1)
+s<-demo_state(as.Date('2026-11-02'));s$jobs$name[2]<-s$jobs$name[1];s<-log_work(s,'t1',1,'2026-11-03');s<-set_session_details(s,tail(s$logs$id,1),8,0);s<-log_work(s,'t6',1,'2026-11-03');s<-set_session_details(s,tail(s$logs$id,1),9,0);l<-actual_timesheet(s,'2026-11-01','2026-11-30');stopifnot(all(c('j1','j2')%in%l$Role_id[l$Type=='Task']));d<-working_window_draft(s,'2026-11-01','2026-11-30');stopifnot(all(c('j1','j2')%in%d$Role_id))
+cat('PASS: reflection reserve compares the actual planner draft; duplicate role names remain separated by role ID in exports.\n')
+
+s<-blank_state();s$settings$example_mode<-FALSE;stopifnot(needs_guided_setup(s));s$jobs<-simple_job('j1','An existing role');stopifnot(!needs_guided_setup(s));cat('PASS: legacy users with existing roles keep task review even when an old setup flag was incomplete.\n')
+
+s<-demo_state(as.Date('2026-11-02'));s<-calendar_entry(s,'2026-11-04',calendar_clock('09:40'),calendar_clock('10:20'),'Unavailable','Precise dentist');g<-capacity_grid(s,TRUE,0,16,as.Date('2026-11-02'));stopifnot(all(g$blocked[interval_indices(3,9.5,10.5)]),validate_state(s));s<-calendar_entry(s,'2026-11-05',calendar_clock('09:40'),calendar_clock('10:20'),'Available','Precise window');g<-capacity_grid(s,TRUE,0,16,as.Date('2026-11-02'));stopifnot(!g$available[interval_indices(4,9.5,9.75)],all(g$available[interval_indices(4,9.75,10.25)]),!g$available[interval_indices(4,10.25,10.5)]);cat('PASS: exact activity minutes block surrounding quarters, while availability uses only complete quarters.\n')
+
+s<-demo_state(as.Date('2026-11-02'));before<-nrow(s$blocks);s<-save_personal_commitment(s,title='Climbing',days=c(2,4),start=20,end=21.5);stopifnot(nrow(s$blocks)==before+2,all(s$blocks$kind[s$blocks$title=='Climbing']=='Protected'));g<-capacity_grid(s,TRUE,0,16,as.Date('2026-11-02'));stopifnot(all(g$blocked[interval_indices(2,20,21.5)]));cat('PASS: personal hobbies repeat on selected days and protect calendar capacity.\n')
+
+s<-blank_state(as.Date('2026-11-02'));s$settings$plan_buffer<-0;s$settings$plan_cap<-12;s$jobs<-simple_job('j1','Role','Hourly',hours=10,rate=20);s$availability<-data.frame(id='a1',day=1,start=8,end=18);s$tasks<-simple_task('t1','j1','One remaining task',10,as.Date('2026-11-30'));before<-s;p<-plan_period(s,'2026-11-02','2026-11-15',today=as.Date('2026-11-02'));stopifnot(sum(p$hours)==10,identical(before,s));c<-period_capacity(s,'2026-11-02','2026-11-15',as.Date('2026-11-02'));stopifnot(c$planned==10,c$capacity==16,c$free==6)
+s<-calendar_entry(s,'2026-11-09',8,10,'Task',task_id='t1');p<-plan_period(s,'2026-11-02','2026-11-15',today=as.Date('2026-11-02'));stopifnot(sum(p$hours)==10,sum(p$hours[p$date=='2026-11-09'])==2)
+cat('PASS: monthly projections consume remaining effort once and reserve later manual blocks without mutating saved tasks.\n')

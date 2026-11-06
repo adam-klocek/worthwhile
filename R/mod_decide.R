@@ -1,11 +1,11 @@
-decideUI <- function(id) {
+decideLegacyUI <- function(id) {
  ns<-NS(id)
  tagList(tags$div(class='experience-heading',tags$p(class='eyebrow','DECIDE'),tags$h1('What is worth your next hour?'),tags$p(class='lead','Compare real trade-offs. Keep the judgement yours.')),
   tabsetPanel(id=ns('sections'),type='pills',tabPanel('Priorities',selectInput(ns('strategy'),'Decision lens',strategies,'Balanced'),tags$p(class='hint','Critical consequences and fixed deadlines keep their existing guardrails. The lens orders tasks within those tiers.'),tableOutput(ns('ranking')),fluidRow(column(6,selectInput(ns('a'),'Compare a task',NULL)),column(6,selectInput(ns('b'),'With another task',NULL))),uiOutput(ns('comparison')),uiOutput(ns('explanation'))),
    tabPanel('Trade-off simulator',fluidRow(column(5,section('An alternative week',selectInput(ns('sim_strategy'),'What should take precedence?',strategies,'Balanced'),numericInput(ns('fewer'),'Fewer usable focus hours this week',0,min=0,max=100,step=.25),checkboxInput(ns('project'),'Consider another project',FALSE),conditionalPanel('input.project',ns=ns,textInput(ns('project_name'),'Project / deliverable','A possible new project'),selectInput(ns('project_job'),'Work role',NULL),numericInput(ns('project_hours'),'Estimated remaining effort (h)',5,min=.25,step=.25),numericInput(ns('project_bonus'),'Guaranteed additional completion payment',0,min=0)),actionButton(ns('simulate'),'Explore this scenario',class='btn-primary'))),column(7,section('What would change?',uiOutput(ns('scenario_summary')),tableOutput(ns('scenario_changes')),actionButton(ns('apply'),'Apply this scenario to my plan',class='btn-quiet'),tags$p(class='hint','Scenarios are copies. Applying is explicit, preserves manual locks and is blocked when real data changed since the preview. Cash is an estimate before tax, not a receipt or guaranteed optimum.'))))),
    tabPanel('Future opportunities',opportunityUI(ns('future')))))
 }
-decideServer <- function(id,state,commit,controls,planning,open_goal=function(id){})moduleServer(id,function(input,output,session){
+decideLegacyServer <- function(id,state,commit,controls,planning,open_goal=function(id){})moduleServer(id,function(input,output,session){
  scenario<-reactiveVal(NULL);error<-reactiveVal('')
  context<-function()list(week=controls$anchor(),lens=controls$strategy(),buffer=controls$buffer(),cap=controls$cap(),protect=controls$protect(),seed=controls$seed(),today=controls$today())
  observe({t<-active_tasks(state());updateSelectInput(session,'a',choices=choices_id(t),selected=isolate(input$a));updateSelectInput(session,'b',choices=choices_id(t),selected=isolate(input$b));updateSelectInput(session,'project_job',choices=choices_id(state()$jobs,'name'))})
@@ -19,4 +19,17 @@ decideServer <- function(id,state,commit,controls,planning,open_goal=function(id
  observeEvent(input$apply,{tryCatch({p<-scenario();if(is.null(p))stop('Explore a scenario first.');if(!identical(state(),p$source)||!identical(context(),p$context))stop('Real data or planning context changed; explore the scenario again.');if(length(p$after$conflicts))stop('Resolve manual-lock conflicts before applying.');p$state$settings$plan_strategy<-p$strategy;commit(p$state);controls$set_strategy(p$strategy);scenario(NULL);showNotification('Scenario explicitly applied. Undo is available.')},error=function(e)error(conditionMessage(e)))})
  opportunities<-opportunityServer('future',state,commit,open_goal)
  list(scenario=scenario,error=error,opportunities=opportunities)
+})
+
+# Legacy simulators remain in source for a later release; no server observers are mounted.
+decideUI <- function(id) {
+ ns<-NS(id);tagList(tags$div(class='experience-heading',tags$p(class='eyebrow','DECIDE'),tags$h1('What is worth your next hour?'),tags$p(class='lead','Choose a lens that fits what matters to you.')),
+ tabsetPanel(id=ns('sections'),type='pills',tabPanel('Priorities',selectInput(ns('strategy'),'Decision lens',strategies,'Balanced'),tags$p(class='hint','Critical consequences, fixed deadlines and unresolved dependencies keep their guardrails. Customize categories in Plan → Data & preferences.'),tableOutput(ns('ranking')),fluidRow(column(6,selectInput(ns('a'),'Compare a task',NULL)),column(6,selectInput(ns('b'),'With another task',NULL))),uiOutput(ns('comparison')),uiOutput(ns('explanation'))),tabPanel('Trade-off simulator',section('Room for future choices.',tags$p('The trade-off simulator will return in a future version. Your saved data is preserved.'))),tabPanel('Future opportunities',section('Keep the uncertainty.',tags$p('Future opportunities will return in a future version. Existing opportunities and links remain in your saved plan.')))))
+}
+decideServer <- function(id,state,commit,controls,planning,open_goal=function(id){})moduleServer(id,function(input,output,session){
+ observe({t<-active_tasks(state());updateSelectInput(session,'a',choices=choices_id(t),selected=isolate(input$a));updateSelectInput(session,'b',choices=choices_id(t),selected=isolate(input$b));updateSelectInput(session,'strategy',choices=decision_lenses(state()),selected=controls$strategy())})
+ observeEvent(input$strategy,{if(input$strategy%in%decision_lenses(state()))controls$set_strategy(input$strategy)},ignoreInit=TRUE)
+ output$ranking<-renderTable({t<-rank_tasks(state(),controls$strategy(),controls$today(),controls$seed());if(!nrow(t))return(NULL);data.frame(Task=t$title,Tier=t$tier,Score=t$score,Remaining_h=t$remaining,Net_per_h=round(t$net_hour,2),Blocked=t$blocked)},digits=3,striped=TRUE)
+ output$comparison<-renderUI({s<-state();t<-rank_tasks(s,controls$strategy(),controls$today(),controls$seed());tagList(lapply(c(input$a,input$b),function(id){r<-t[t$id==id,,drop=FALSE];if(!nrow(r))return(NULL);section(r$title,task_explanation(s,r,planning(),controls$today(),controls$strategy()))}))})
+ output$explanation<-renderUI({d<-state()$categories;d<-d[d$enabled,,drop=FALSE];tags$p(class='hint',paste('Balanced: urgency 25%, consequences 20%, marginal cash 15%, contract balance 10%, personal meaning 15%; enabled categories add their saved weights:',paste(paste0(d$label,' ',round(d$weight*100),'%'),collapse='; '),'. Scores compare your backlog, rather than measuring personal worth.'))})
 })

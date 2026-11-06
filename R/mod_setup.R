@@ -2,7 +2,7 @@ time_choices <- function() setNames(seq(0,23.75,.25),fmt_hour(seq(0,23.75,.25)))
 setupUI <- function(id) {
   ns<-NS(id)
   tagList(tags$div(class='setup-shell',
-    tags$div(class='setup-intro',tags$span(class='eyebrow','A LITTLE SETUP. A LOT MORE CLARITY.'),tags$h2('Let’s make space for your week.'),tags$p('Five small steps. Start with the essentials — you can fine-tune everything later.'),
+    tags$div(class='setup-intro',brand_logo(),tags$span(class='eyebrow','A LITTLE SETUP. A LOT MORE CLARITY.'),tags$h2('Let’s make space for your week.'),tags$p('Five small steps. Start with the essentials — you can fine-tune everything later.'),
       tags$div(class='welcome-options',actionButton(ns('demo'),'Explore the scientist example',icon=icon('flask'),class='btn btn-quiet'),tags$span('or build your own plan below'))),
     uiOutput(ns('steps')),
     tags$div(class='setup-card',tabsetPanel(id=ns('panels'),type='hidden',selected='1',
@@ -36,7 +36,7 @@ setupUI <- function(id) {
         actionButton(ns('add_task'),'Add this task',icon=icon('plus'),class='btn-primary'),tags$p(class='hint','Goals, dependencies, career scores and detailed costs can wait. They are available when you need them.')),
       tabPanel('Your plan',value='5',tags$div(class='step-heading',tags$span(class='step-number','05'),tags$div(tags$h2('Here is your starting point.'),tags$p('A realistic first plan — ready to adjust as you learn.'))),uiOutput(ns('review')),
         tags$div(class='soft-box',tags$strong('A simple daily rhythm'),tags$ol(tags$li('Check your next three moves.'),tags$li('Work on one task, then log the time or mark it finished.'),tags$li('Review your week when a deadline or commitment changes.'))),
-        tags$div(class='save-reminder',icon('download'),tags$span('Your plan saves automatically on this computer. Keep a downloadable backup too.')))
+        tags$div(class='save-reminder',icon('download'),tags$span('Your plan saves in your configured account or local storage. Keep a downloadable backup too.')))
     ),uiOutput(ns('message')),tags$div(class='wizard-footer',actionButton(ns('back'),'Back',icon=icon('arrow-left'),class='btn-quiet'),tags$span(textOutput(ns('position'),inline=TRUE)),actionButton(ns('next_step'),'Continue',icon=icon('arrow-right'),class='btn-primary'))),
     tags$p(class='setup-footnote','You can revisit this guide any time. Your current plan changes only when you choose “Create my plan”.')))
 }

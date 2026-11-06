@@ -3,7 +3,7 @@ const fs = require('fs');
 const css = fs.readFileSync('www/style.css', 'utf8');
 const tokenCSS = fs.readFileSync('www/tokens.css', 'utf8');
 const tokens = Object.fromEntries([...tokenCSS.matchAll(/--([a-z-]+):\s*(#[0-9A-Fa-f]{6});/g)].map(m => [m[1], m[2]]));
-const brand = {ink:'#292D3E',iris:'#777AB5',lavender:'#B7B8E5',clay:'#D6AFA4',paper:'#F4F3F0',surface:'#FFFFFF',muted:'#626575'};
+const brand = {ink:'#30352F',iris:'#304F3B',lavender:'#9CAF82',clay:'#D9BA78',paper:'#FAF8F2',surface:'#FFFFFF',muted:'#5C6559'};
 for (const [name,value] of Object.entries(brand)) if (tokens[name] !== value) throw new Error(`Incorrect brand token ${name}`);
 if (/#[0-9a-f]{3,8}\b/i.test(css)) throw new Error('Component CSS must use semantic colour tokens');
 function luminance(hex) {

@@ -20,7 +20,7 @@ s<-purge_history(s,'jobs','j3');stopifnot(!'t11'%in%all_records(s,'tasks')$id,ac
 # Current and old backup files round-trip; old unknown actuals are not guessed.
 f<-tempfile(fileext='.json');save_state(s,f);loaded<-read_backup(f);stopifnot(validate_state(loaded),nrow(loaded$archive$tasks)==nrow(s$archive$tasks));unlink(f)
 old<-demo_state(as.Date('2026-10-23'));old$schema<-1L;old$archive<-NULL;old$tasks<-old$tasks[,!names(old$tasks)%in%c('original_estimate','collaborators','created','time_complete','blocked_reason')]
-f<-tempfile(fileext='.json');jsonlite::write_json(old,f,auto_unbox=TRUE,dataframe='columns');up<-read_backup(f);stopifnot(up$schema==4L,all(!up$tasks$time_complete),identical(up$tasks$total,up$tasks$original_estimate));unlink(f)
+f<-tempfile(fileext='.json');jsonlite::write_json(old,f,auto_unbox=TRUE,dataframe='columns');up<-read_backup(f);stopifnot(up$schema==5L,all(!up$tasks$time_complete),identical(up$tasks$total,up$tasks$original_estimate));unlink(f)
 # Analytics calibration uses only confirmed completions, and requires evidence.
 s<-demo_state(as.Date('2026-10-23'));for(id in c('t1','t2','t3'))s<-finish_with_actual(s,id,s$tasks$total[match(id,s$tasks$id)]*2,as.Date('2026-10-23'))
 r<-task_report(s);stopifnot(analytics_summary(r)$ratio==2,any(grepl('2×|2 and',behaviour_recommendations(r))),sum(job_report(r)$Tasks)==17)

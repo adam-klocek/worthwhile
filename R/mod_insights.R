@@ -4,7 +4,6 @@ insightsUI <- function(id) {
     checkboxInput(ns('deleted'),'Include deleted tasks and jobs in reports',TRUE),uiOutput(ns('metrics')),
     fluidRow(column(7,section('Estimated versus actual time',plotOutput(ns('comparison'),height='350px'),tags$p(class='hint','Each point is a completed task with a confirmed actual total. The diagonal means exactly on estimate. Unfinished tasks and older completions with unknown time are excluded.'))),column(5,section('What to try next',uiOutput(ns('recommendations'))))),
     fluidRow(column(7,section('Time over recent weeks',plotOutput(ns('trend'),height='240px'))),column(5,section('Progress with purpose',uiOutput(ns('goal_context'))))),section('Contract context',tableOutput(ns('contract')),tags$p(class='hint','Current salary and rates are contract references, not a reconstruction of past income. Recorded effort is actual time; value is not inferred from busyness.')),
-    accordion('Opportunity follow-through',tableOutput(ns('opportunities')),tags$p(class='hint','Recorded preparation effort and your entered outcome stage. Finishing a preparation goal is distinct from winning funding or receiving money.')),
     section('Work by job',tableOutput(ns('jobs'))),section('Your task history',selectInput(ns('filter'),'Show',c('All tasks','Open tasks','Completed tasks','Deleted tasks')),tableOutput(ns('history')),downloadButton(ns('csv'),'Export task history CSV')),
     accordion('Correct or delete a time entry',selectInput(ns('log_id'),'Time entry',NULL),numericInput(ns('log_hours'),'Correct actual hours',1,min=.01,step=.25),dateInput(ns('log_date'),'Work date',Sys.Date()),textAreaInput(ns('log_note'),'Session note',rows=2),actionButton(ns('log_save'),'Save correction',class='btn-primary'),actionButton(ns('log_delete'),'Delete time entry',class='btn-danger-soft'),tags$p(class='hint','Corrections change reported actual time; they do not change your estimate of remaining work. Undo can restore a deleted entry. Entries for removed tasks can be corrected too.')),accordion('Delete a removed record from report history',selectInput(ns('purge_kind'),'Record type',c('Task'='tasks','Job and its history'='jobs','Goal'='goals','Opportunity'='opportunities')),selectInput(ns('purge_id'),'Removed record',NULL),actionButton(ns('purge'),'Remove from history',class='btn-danger-soft'),tags$p(class='hint','Unlike normal deletion, this removes the chosen historical record and associated time logs from the saved report data. Undo remains available in this session.')))
 }
@@ -27,6 +26,8 @@ insightsServer <- function(id,state,commit)moduleServer(id,function(input,output
   change_log<-function(remove=FALSE){s<-state();id<-input$log_id;req(id);table<-if(id%in%s$logs$id)'current'else'archive';l<-if(table=='current')s$logs else s$archive$logs;i<-match(id,l$id);req(!is.na(i))
     if(remove)l<-l[-i,,drop=FALSE]else{s<-edit_work_session(s,id,input$log_hours,input$log_date,input$log_note %||% '');l<-if(table=='current')s$logs else s$archive$logs}
     if(table=='current')s$logs<-l else s$archive$logs<-l
+    if(remove)s$session_details<-s$session_details[s$session_details$log_id!=id,,drop=FALSE]
+    if(remove)s<-delete_work_session(state(),id)
     commit_safely(commit,s)
   }
   observeEvent(input$log_save,change_log())

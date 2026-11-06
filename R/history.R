@@ -2,7 +2,7 @@
 record_tables <- c('jobs','allocations','tasks','goals','availability','blocks','logs','opportunities')
 migrate_state <- function(s) {
   version<-as.integer(s$schema)
-  if(length(version)!=1 || !version%in%c(1L,2L,3L,4L))stop('Unsupported backup version.',call.=FALSE)
+  if(length(version)!=1 || !version%in%c(1L,2L,3L,4L,5L))stop('Unsupported backup version.',call.=FALSE)
   if(!is.data.frame(s$tasks))stop('Invalid tasks table.',call.=FALSE)
   n<-nrow(s$tasks)
   defaults<-list(original_estimate=s$tasks$total,collaborators=rep('',n),created=rep('',n),time_complete=rep(FALSE,n),blocked_reason=rep('',n),started=rep(FALSE,n),paused=rep(FALSE,n),next_action=rep('',n),billable=rep(TRUE,n))
@@ -34,7 +34,7 @@ migrate_state <- function(s) {
     if(setequal(names(d),cols))d<-d[,cols,drop=FALSE]
     if(place=='current')s[[nm]]<-d else s$archive[[nm]]<-d
   }
-  s$schema<-4L;s
+  v2_upgrade(s)
 }
 all_records <- function(s,table) {
   archived<-s$archive[[table]]
@@ -78,7 +78,7 @@ log_work <- function(s,id,hours,date=Sys.Date(),remaining=NULL,note='') {
   if(length(remaining)!=1||!is.finite(remaining)||remaining<.25||abs(remaining*4-round(remaining*4))>1e-8)stop('Set at least 0.25 h remaining, in quarter-hour steps. Use Finish when it is done.',call.=FALSE)
   s$log_sequence<-max(c(s$log_sequence %||% 0,suppressWarnings(as.numeric(sub('^l','',record_ids(s,'logs'))))),na.rm=TRUE)+1
   s$logs<-rbind(s$logs,data.frame(id=paste0('l',format(s$log_sequence,scientific=FALSE,trim=TRUE)),task_id=id,job_id=s$tasks$job_id[i],date=as.character(date),hours=hours,note=as.character(note),created_at=utc_stamp(),updated_at=utc_stamp(),stringsAsFactors=FALSE))
-  s$tasks$started[i]<-TRUE
+  s$tasks$started[i]<-TRUE;s$settings$last_task_id<-id
   s$tasks$remaining[i]<-remaining;s$tasks$total[i]<-max(s$tasks$total[i],remaining)
   s
 }
@@ -106,7 +106,7 @@ start_focus <- function(s,id) {
   i<-match(id,s$tasks$id);if(is.na(i)||s$tasks$done[i])stop('Choose an unfinished task.')
   r<-rank_tasks(s);if(isTRUE(r$blocked[match(id,r$id)]))stop('Resolve the task dependency or blocked reason first.')
   s$tasks$paused[s$tasks$started & !s$tasks$done]<-TRUE
-  s$tasks$started[i]<-TRUE;s$tasks$paused[i]<-FALSE;s
+  s$tasks$started[i]<-TRUE;s$tasks$paused[i]<-FALSE;s$settings$last_task_id<-id;s
 }
 pause_focus <- function(s,id) {i<-match(id,s$tasks$id);if(!is.na(i))s$tasks$paused[i]<-TRUE;s}
 task_status <- function(s) {
@@ -127,11 +127,11 @@ save_state <- function(s,path,expected_revision=NULL) {
     old<-read_backup(path)
     if(!is.null(expected_revision)&&old$revision!=expected_revision)stop('This plan changed in another session. Reload the saved file before saving; your current session has been kept.')
     raw<-jsonlite::fromJSON(path,simplifyVector=FALSE)
-    if(as.integer(raw$schema)<4){migration<-paste0(path,'.schema',raw$schema,'.backup.json');if(!file.exists(migration)&&!file.copy(path,migration))stop('Could not preserve the pre-migration backup.')}
+    if(as.integer(raw$schema)<5){migration<-paste0(path,'.schema',raw$schema,'.backup.json');if(!file.exists(migration)&&!file.copy(path,migration))stop('Could not preserve the pre-migration backup.')}
     if(!file.copy(path,paste0(path,'.previous.json'),overwrite=TRUE))stop('Could not preserve the previous good save.')
   } else if(!is.null(expected_revision)&&expected_revision!=0L)stop('The saved file is missing; refusing to overwrite a stale session.')
   tmp<-tempfile('worthwhile-',tmpdir=dirname(path),fileext='.json');on.exit(if(file.exists(tmp))unlink(tmp),add=TRUE)
-  jsonlite::write_json(s,tmp,pretty=TRUE,auto_unbox=TRUE,dataframe='columns')
+  jsonlite::write_json(s,tmp,pretty=TRUE,auto_unbox=TRUE,dataframe='columns',digits=NA)
   if(!file.rename(tmp,path))stop('Could not replace the save. Previous data and backup were retained.')
   invisible(TRUE)
 }
@@ -144,5 +144,8 @@ purge_history <- function(s,kind,id) {
   }
   if(kind=='tasks')s$archive$logs<-s$archive$logs[s$archive$logs$task_id!=id,,drop=FALSE]
   s$archive[[kind]]<-s$archive[[kind]][s$archive[[kind]]$id!=id,,drop=FALSE]
+  s$ratings<-s$ratings[s$ratings$task_id%in%record_ids(s,'tasks'),,drop=FALSE]
+  s$session_details<-s$session_details[s$session_details$log_id%in%record_ids(s,'logs'),,drop=FALSE]
+  if(kind=='jobs'){s$role_reviews<-s$role_reviews[s$role_reviews$job_id!=id,,drop=FALSE];s$attendance<-s$attendance[s$attendance$job_id!=id,,drop=FALSE]}
   s
 }

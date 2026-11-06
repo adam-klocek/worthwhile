@@ -1,5 +1,5 @@
 # Run from project root: Rscript tests/test-model.R
-source('R/design.R');source('R/model.R');source('R/opportunities.R');source('R/planning.R');source('R/demo.R');source('R/history.R')
+source('R/design.R');source('R/model.R');source('R/opportunities.R');source('R/planning.R');source('R/demo.R');source('R/history.R');source('R/v2_model.R')
 checks<-0L
 check<-function(ok,label){stopifnot(isTRUE(ok));checks<<-checks+1L;cat('PASS:',label,'\n')}
 expect_error<-function(expr) inherits(tryCatch({force(expr);NULL},error=identity),'error')

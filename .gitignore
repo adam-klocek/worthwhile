@@ -18,7 +18,7 @@ rsconnect/
 renv/library/
 renv/staging/
 renv/cache/
-# Offline reference is distributed in the ZIP, not needed in the repository.
+# Optional local interface previews.
 preview/
 
 worthwhile-backup-*.json
