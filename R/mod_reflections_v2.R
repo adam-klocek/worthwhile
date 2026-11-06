@@ -21,7 +21,14 @@ reflectionsUI <- function(id) {
 }
 reflectionsServer <- function(id,state,commit,controls)moduleServer(id,function(input,output,session){
  today<-controls$today;week<-reactive(week_start(input$week %||% today()));month<-reactive(as.Date(sprintf('%04d-%02d-01',as.integer(input$year %||% format(today(),'%Y')),as.integer(input$month %||% format(today(),'%m')))));month_end<-reactive(seq(month(),by='month',length.out=2)[2]-1)
- session$onFlushed(function(){updateDateInput(session,'week',value=week_start(today()));updateNumericInput(session,'year',value=as.integer(format(today(),'%Y')));updateSelectInput(session,'month',selected=as.integer(format(today(),'%m')))},once=TRUE)
+ # Lifecycle callbacks run outside reactive consumers in a live Shiny session.
+ # Take one isolated date snapshot; testServer's ambient context can hide this bug.
+ session$onFlushed(function(){
+  current_day<-isolate(today())
+  updateDateInput(session,'week',value=week_start(current_day))
+  updateNumericInput(session,'year',value=as.integer(format(current_day,'%Y')))
+  updateSelectInput(session,'month',selected=as.integer(format(current_day,'%m')))
+ },once=TRUE)
  observeEvent(input$previous,updateDateInput(session,'week',value=week()-7));observeEvent(input$next_week,updateDateInput(session,'week',value=week()+7));observeEvent(input$current,updateDateInput(session,'week',value=week_start(today())))
  observe({s<-state();updateSelectInput(session,'role',choices=choices_id(s$jobs,'name'),selected=isolate(input$role));updateSelectInput(session,'timesheet_role',choices=c('All roles'='',choices_id(all_records(s,'jobs'),'name')),selected=isolate(input$timesheet_role))})
  session$onFlushed(function(){st<-isolate(state())$settings;for(n in c('reserve','window_start','window_end','lunch_start','lunch_end'))updateNumericInput(session,n,value=st[[switch(n,reserve='reserve_pct',window_start='timesheet_start',window_end='timesheet_end',lunch_start='timesheet_lunch_start',lunch_end='timesheet_lunch_end')]])},once=TRUE)
